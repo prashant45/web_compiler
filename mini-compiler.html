@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Online Compiler — Live HTML/CSS/JS Editor</title>
+  <style>
+    :root{
+      --bg:#0f1724; --panel:#0b1220; --muted:#94a3b8; --accent:#0ea5a4;
+      --card:#0b1220; --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:linear-gradient(180deg,#071021 0%, #081827 100%); color:#e6eef8}
+
+    header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.03)}
+    header h1{font-size:18px;margin:0;letter-spacing:0.2px}
+    header .meta{color:var(--muted);font-size:13px}
+    .top-controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .btn{background:linear-gradient(180deg,#0ea5a4,#059e9d);border:none;padding:8px 12px;border-radius:8px;color:#042022;cursor:pointer;font-weight:600}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .btn.small{padding:6px 8px;font-size:13px}
+
+    .wrap{display:grid;grid-template-rows:1fr 320px;gap:10px;height:calc(100% - 64px);padding:16px}
+    .editors{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .panel{background:var(--card);border-radius:12px;padding:10px;display:flex;flex-direction:column;min-height:160px;overflow:hidden;box-shadow:0 6px 20px rgba(2,6,23,0.6)}
+    .panel .p-head{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 10px 8px}
+    .panel .p-head .title{font-weight:700}
+    .editor{flex:1;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.03)}
+
+    .bottom{display:grid;grid-template-columns:1fr 360px;gap:12px}
+    .preview-panel{display:flex;flex-direction:column}
+    .iframe-wrap{flex:1;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.04)}
+    iframe#preview{width:100%;height:100%;border:0;background:white}
+    .console{height:160px;background:#041021;border-radius:8px;padding:8px;overflow:auto;border:1px solid rgba(255,255,255,0.03);font-family:monospace;font-size:13px}
+
+    .settings{display:flex;flex-direction:column;gap:10px;padding:10px}
+    label{font-size:13px;color:var(--muted)}
+    select,input[type=checkbox]{padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+
+    .small-muted{font-size:12px;color:var(--muted)}
+    .presets{display:flex;gap:6px;flex-wrap:wrap}
+    .preset{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;cursor:pointer;color:var(--muted)}
+
+    footer{padding:10px 18px;color:var(--muted);font-size:13px;text-align:center}
+    @media(max-width:980px){.editors{grid-template-columns:1fr;grid-auto-rows:250px}.bottom{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Mini Online Compiler</h1>
+      <div class="meta">Live HTML / CSS / JS editor — autosave, share, run & debug</div>
+    </div>
+    <div class="top-controls">
+      <button class="btn small" id="runBtn">Run ▶</button>
+      <button class="btn ghost small" id="autoToggle">Auto: ON</button>
+      <button class="btn ghost small" id="downloadBtn">Download</button>
+      <button class="btn" id="shareBtn">Share</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="editors">
+      <section class="panel">
+        <div class="p-head"><div class="title">HTML</div><div class="small-muted">index.html</div></div>
+        <div id="htmlEditor" class="editor"></div>
+      </section>
+
+      <section class="panel">
+        <div class="p-head"><div class="title">CSS</div><div class="small-muted">styles.css</div></div>
+        <div id="cssEditor" class="editor"></div>
+      </section>
+
+      <section class="panel">
+        <div class="p-head"><div class="title">JavaScript</div><div class="small-muted">app.js</div></div>
+        <div id="jsEditor" class="editor"></div>
+      </section>
+    </div>
+
+    <div class="bottom">
+      <div class="preview-panel panel">
+        <div class="p-head"><div class="title">Preview</div><div class="small-muted">Live iframe</div></div>
+        <div class="iframe-wrap" style="height:100%;">
+          <iframe id="preview" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+      </div>
+
+      <div class="panel settings">
+        <div class="p-head"><div class="title">Settings & Console</div></div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+          <div>
+            <label class="small-muted">Editor theme</label><br>
+            <select id="themeSelect">
+              <option value="ace/theme/monokai">Monokai</option>
+              <option value="ace/theme/twilight">Twilight</option>
+              <option value="ace/theme/github">GitHub</option>
+              <option value="ace/theme/dracula">Dracula</option>
+              <option value="ace/theme/solarized_light">Solarized Light</option>
+            </select>
+          </div>
+          <div style="width:1px;height:48px;background:rgba(255,255,255,0.02)"></div>
+          <div>
+            <label class="small-muted">Font size</label><br>
+            <select id="fontSize">
+              <option>12</option>
+              <option selected>14</option>
+              <option>16</option>
+              <option>18</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <label class="small-muted">Templates</label>
+          <div class="presets" id="presets"></div>
+        </div>
+
+        <div style="margin-top:8px">
+          <label class="small-muted">Console</label>
+          <div id="console" class="console"></div>
+        </div>
+
+        <div style="margin-top:auto;display:flex;gap:8px;align-items:center">
+          <button class="btn ghost small" id="clearStorage">Reset</button>
+          <div style="margin-left:auto;color:var(--muted);font-size:12px">Ctrl/Cmd + S to Run</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Made for your WebTech project — export, share and iterate. Ask me to add GitHub Gist export or live collaboration.</footer>
+
+  <!-- Ace Editor CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.3/ace.js" crossorigin="anonymous"></script>
+
+  <script>
+    // --- utilities ---
+    const $ = id => document.getElementById(id);
+    const saveKey = 'mini_compiler_v1';
+
+    // default template
+    const DEFAULTS = {
+      html: `<!doctype html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n    <title>Playground</title>\n  </head>\n  <body>\n    <h1>Hello — Mini Online Compiler!</h1>\n    <p>Edit HTML, CSS and JS on the left — preview updates live.</p>\n  </body>\n</html>`,
+      css: `body{font-family:system-ui,Arial;background:linear-gradient(135deg,#f8fafc,#e6eef8);color:#0b1220;padding:32px}h1{color:#0b1220}`,
+      js: `console.log('Welcome — edit JS here.');\n
+// Example: change body background\ndocument.body.style.background = 'linear-gradient(135deg,#dbeafe,#c7f9ff)';`
+    };
+
+    // create Ace editors
+    const htmlEditor = ace.edit('htmlEditor',{mode:'ace/mode/html',theme:'ace/theme/monokai'});
+    const cssEditor = ace.edit('cssEditor',{mode:'ace/mode/css',theme:'ace/theme/monokai'});
+    const jsEditor  = ace.edit('jsEditor',{mode:'ace/mode/javascript',theme:'ace/theme/monokai'});
+    [htmlEditor, cssEditor, jsEditor].forEach(ed=>{ed.setOptions({fontSize:'14px',wrap:true,showPrintMargin:false});ed.session.setUseWrapMode(true)});
+
+    // load from share or storage
+    function loadState(){
+      const params = new URLSearchParams(location.hash.replace('#',''));
+      if(params.has('data')){
+        try{
+          const decoded = atob(params.get('data'));
+          const obj = JSON.parse(decoded);
+          htmlEditor.setValue(obj.html, -1);
+          cssEditor.setValue(obj.css, -1);
+          jsEditor.setValue(obj.js, -1);
+          consoleLog('Loaded code from share link');
+          return;
+        }catch(e){consoleLog('Could not parse shared link — using local data');}
+      }
+      const stored = localStorage.getItem(saveKey);
+      if(stored){
+        try{
+          const s = JSON.parse(stored);
+          htmlEditor.setValue(s.html || DEFAULTS.html, -1);
+          cssEditor.setValue(s.css || DEFAULTS.css, -1);
+          jsEditor.setValue(s.js || DEFAULTS.js, -1);
+          consoleLog('Restored from local storage');
+          return;
+        }catch(e){}
+      }
+      htmlEditor.setValue(DEFAULTS.html, -1);
+      cssEditor.setValue(DEFAULTS.css, -1);
+      jsEditor.setValue(DEFAULTS.js, -1);
+    }
+
+    // render iframe content
+    const iframe = $('preview');
+    function buildFrameContent(){
+      const html = htmlEditor.getValue();
+      const css = '<style>'+cssEditor.getValue()+'</style>';
+      const js = `<script>\n// capture console and errors\n(function(){\n  function send(type,args){try{parent.postMessage({type:type,args:args}, '*')}catch(e){}}\n  const origLog = console.log; console.log = function(){send('log', Array.from(arguments)); origLog.apply(console, arguments)};\n  const origErr = console.error; console.error = function(){send('error', Array.from(arguments)); origErr.apply(console, arguments)};\n  window.addEventListener('error', function(e){send('error', [e.message+' at '+e.filename+':'+e.lineno]);});\n})();\n\n${jsEditor.getValue()}\n<\/script>`;
+      return html.replace('</body>', css+js+'\n</body>');
+    }
+
+    function run(){
+      const content = buildFrameContent();
+      // write into iframe
+      const doc = iframe.contentWindow.document;
+      doc.open(); doc.write(content); doc.close();
+      consoleLog('Preview updated — '+new Date().toLocaleTimeString());
+    }
+
+    // console log panel
+    const consoleEl = $('console');
+    function consoleLog(...args){
+      const line = document.createElement('div');
+      line.textContent = args.map(a=>typeof a==='object'?JSON.stringify(a):a).join(' ');
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // receive messages from iframe
+    window.addEventListener('message', (ev)=>{
+      if(!ev.data) return;
+      const {type,args} = ev.data;
+      if(type==='log') consoleLog(...args);
+      if(type==='error') consoleLog('⛔',...args);
+    });
+
+    // autosave and settings
+    function persist(){
+      const state = {html:htmlEditor.getValue(), css:cssEditor.getValue(), js:jsEditor.getValue()};
+      localStorage.setItem(saveKey, JSON.stringify(state));
+    }
+
+    // debounce helper
+    function debounce(fn, wait=350){let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>fn(...a), wait)}}
+
+    const autoToggle = $('autoToggle');
+    let autoRun = true;
+    autoToggle.addEventListener('click', ()=>{autoRun = !autoRun; autoToggle.innerText = 'Auto: '+(autoRun? 'ON':'OFF');});
+
+    const debouncedRun = debounce(()=>{run(); persist();}, 300);
+
+    [htmlEditor, cssEditor, jsEditor].forEach(ed=> ed.session.on('change', ()=>{ if(autoRun) debouncedRun(); }));
+
+    // buttons
+    $('runBtn').addEventListener('click', ()=>{run(); persist();});
+    document.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); run(); persist(); }});
+
+    // download combined HTML file
+    $('downloadBtn').addEventListener('click', ()=>{
+      const content = buildFrameContent();
+      const blob = new Blob([content], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'index.html'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // share: encode into URL hash
+    $('shareBtn').addEventListener('click', ()=>{
+      const state = {html:htmlEditor.getValue(), css:cssEditor.getValue(), js:jsEditor.getValue()};
+      const encoded = btoa(JSON.stringify(state));
+      const url = location.origin + location.pathname + '#' + new URLSearchParams({data: encoded}).toString();
+      navigator.clipboard.writeText(url).then(()=>{alert('Share link copied to clipboard');});
+    });
+
+    // presets
+    const presetsEl = $('presets');
+    const PRESETS = [
+      {name:'Blank', html:'<!doctype html>\n<html><body></body></html>', css:'', js:''},
+      {name:'Bootstrap Starter', html:`<!doctype html>\n<html>\n<head>\n<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">\n</head>\n<body>\n<div class=\"container mt-5\"><h1 class=\"text-primary\">Bootstrap Starter</h1><p class=\"lead\">Try editing CSS/JS</p></div>\n</body>\n</html>`, css:'', js:''},
+      {name:'Canvas Sketch', html:`<!doctype html>\n<html><body><canvas id=\"c\"></canvas></body></html>`, css:`html,body{height:100%;margin:0}canvas{display:block;width:100%;height:100%}`, js:`const c=document.getElementById('c');const ctx=c.getContext('2d');function resize(){c.width=innerWidth;c.height=innerHeight}window.addEventListener('resize',resize);resize();ctx.fillStyle='tomato';ctx.fillRect(10,10,200,100);`}
+    ];
+    PRESETS.forEach(p=>{const b=document.createElement('button');b.className='preset';b.textContent=p.name;b.onclick=()=>{ if(confirm('Replace current files with preset \"'+p.name+'\"?')){ htmlEditor.setValue(p.html,-1); cssEditor.setValue(p.css||'', -1); jsEditor.setValue(p.js||'', -1); run(); } }; presetsEl.appendChild(b); });
+
+    // theme & font size
+    $('themeSelect').addEventListener('change',(e)=>{[htmlEditor,cssEditor,jsEditor].forEach(ed=>ed.setTheme(e.target.value));});
+    $('fontSize').addEventListener('change',(e)=>{[htmlEditor,cssEditor,jsEditor].forEach(ed=>ed.setFontSize(e.target.value+'px'));});
+
+    // reset storage
+    $('clearStorage').addEventListener('click', ()=>{ if(confirm('Clear saved project from local storage?')){ localStorage.removeItem(saveKey); htmlEditor.setValue(DEFAULTS.html,-1); cssEditor.setValue(DEFAULTS.css,-1); jsEditor.setValue(DEFAULTS.js,-1); run(); } });
+
+    // load state & initial run
+    loadState(); run();
+  </script>
+</body>
+</html>
